@@ -10,9 +10,11 @@ from email.mime.application import MIMEApplication
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.utils import formatdate
+from datetime import date
 
 config = dotenv_values(".env")
 
+FILENAME = f"Paperboy For {date.today()}.epub"
 
 def getConfig(configName):
     return str(config[configName])
@@ -32,7 +34,7 @@ def appendToDoc(doc, finalDoc):
 
 def sendEmailToKindle(filename):
     msg = MIMEMultipart()
-    msg['From'] = getConfig("EMAIL")
+    msg['From'] = "Paperboy <" + getConfig("EMAIL") + ">"
     msg['To'] = getConfig("KINDLE_EMAIL")
     msg['Date'] = formatdate(localtime=True)
     msg['Subject'] = "Your paper for " + formatdate()
@@ -40,7 +42,7 @@ def sendEmailToKindle(filename):
     msg.attach(MIMEText("Document attached"))
 
     with open(filename, 'rb') as file:
-        basename = os.path.basename("today.epub")
+        basename = os.path.basename(FILENAME)
         part = MIMEApplication(file.read(), Name=basename)
     part['Content-Disposition'] = 'attachment; filename="%s"' % basename
     msg.attach(part)
@@ -57,7 +59,7 @@ def sendEmailToKindle(filename):
 # context manager ensures the session is cleaned up
 with IMAPClient(host=getConfig("IMAP_SERVER")) as client:
     client.login(getConfig("EMAIL"), getConfig('PASSWORD'))
-    client.select_folder(config['EMAIL_FOLDER'], True)
+    client.select_folder(config['EMAIL_FOLDER'])
 
     # search criteria are passed in a straightforward way
     # (nesting is supported)
@@ -80,6 +82,6 @@ with IMAPClient(host=getConfig("IMAP_SERVER")) as client:
             appendToDoc(doc, finalDoc)
             break
 
-    pandoc.write(finalDoc, "today.epub", format="epub")
-    sendEmailToKindle("today.epub")
+    pandoc.write(finalDoc, FILENAME, format="epub")
+    sendEmailToKindle(FILENAME)
 
